@@ -29,7 +29,10 @@ def calculate_brightness(image):
 def set_display_brightness(brightness):
     # Вызываем PowerShell для изменения яркости
     command = f"(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,{brightness})"
-    subprocess.run(["powershell", "-Command", command])
+    info = subprocess.STARTUPINFO()
+    info.dwFlags = subprocess.STARTF_USESHOWWINDOW
+    info.wShowWindow = 0
+    subprocess.Popen(["powershell", "Start-Process", "-WindowStyle", "Hidden", "-Command", command], startupinfo=info)
 
 # Функция для определения источника питания (батарея или адаптер)
 def is_on_battery():
