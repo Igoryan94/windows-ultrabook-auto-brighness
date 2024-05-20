@@ -56,7 +56,7 @@ win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
 # Создаем интерфейс
 root = tk.Tk()
 root.title("Auto Brightness")
-root.geometry("300x100")
+root.geometry("300x235")
 
 label_power_source = tk.Label(root, text="Источник питания:")
 label_power_source.pack()
@@ -66,6 +66,25 @@ label_brightness.pack()
 
 label_status = tk.Label(root, text="Статус:")
 label_status.pack()
+
+# Добавляем поля для изменения параметров переменных
+label_interval_ac = tk.Label(root, text="Таймаут при питании от сети (сек):")
+label_interval_ac.pack()
+entry_interval_ac = tk.Entry(root, width=10)
+entry_interval_ac.insert(0, str(interval_ac))
+entry_interval_ac.pack()
+
+label_interval_batt = tk.Label(root, text="Таймаут при питании от батареи (сек):")
+label_interval_batt.pack()
+entry_interval_batt = tk.Entry(root, width=10)
+entry_interval_batt.insert(0, str(interval_batt))
+entry_interval_batt.pack()
+
+label_adjust_multiplier = tk.Label(root, text="Коэффициент коррекции яркости:")
+label_adjust_multiplier.pack()
+entry_adjust_multiplier = tk.Entry(root, width=10)
+entry_adjust_multiplier.insert(0, str(adjust_multiplier))
+entry_adjust_multiplier.pack()
 
 def update_labels():
     on_battery = is_on_battery()
@@ -96,11 +115,13 @@ def on_closing():
 root.protocol("WM_DELETE_WINDOW", on_closing)
 
 def main_loop():
-    global previous_brightness
+    global previous_brightness, interval_ac, interval_batt, adjust_multiplier
     while running:
         # Определить источник питания
         on_battery = is_on_battery()
-        interval = interval_ac if not on_battery else interval_batt  # Таймаут на основе режима питания
+        # Таймаут на основе режима питания
+        interval = int(entry_interval_ac.get()) if not on_battery else int(entry_interval_batt.get())
+        adjust_multiplier = float(entry_adjust_multiplier.get())
         debug(f"{'Сеть' if not on_battery else 'Батарея'}, таймаут: {interval} сек")
 
         # Сделать два замера с некоторым промежутком
@@ -149,6 +170,6 @@ def start_stop():
 
 # Кнопка "Старт/стоп"
 button_start_stop = tk.Button(root, text="Старт", command=start_stop)
-button_start_stop.pack()
+button_start_stop.pack(padx=10, pady=(5, 20))
 
 root.mainloop()
