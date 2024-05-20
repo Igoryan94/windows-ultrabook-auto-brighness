@@ -57,14 +57,22 @@ def show_in_tray(to_show):
 
 def save_config(event=None):
     with open('config.json', 'w') as f:
-        json.dump({'interval_ac': int(entry_interval_ac.get()), 'interval_batt': int(entry_interval_batt.get()), 'adjust_multiplier': float(entry_adjust_multiplier.get())}, f)
+        json.dump({'interval_ac': int(entry_interval_ac.get()), 'interval_batt': int(entry_interval_batt.get()), 'brightness_adjust': int(entry_brightness_adjust.get())}, f)
 
 # Глобальные переменные
-previous_brightnesses = []
+default_interval_ac = 12
+default_interval_batt = 60
+default_brightness_adjust = 50
+
+interval_ac = default_interval_ac
+interval_batt = default_interval_batt
+brightness_adjust = default_brightness_adjust
+
 brightness_avg_count = 3
-interval_ac = 12
-interval_batt = 60
-adjust_multiplier = 1.5
+previous_brightnesses = []
+
+brightness_offset = 3
+
 running = False
 
 nid = 0
@@ -72,17 +80,30 @@ nid = 0
 # Настройка логирования
 logging.basicConfig(filename='autobrightness.log', level=logging.INFO)
 
-# Создаем файл конфигурации, если он не существует
-if not os.path.exists('config.json'):
-    with open('config.json', 'w') as f:
-        json.dump({'interval_ac': 12, 'interval_batt': 60, 'adjust_multiplier': 1.5}, f)
+# Загрузка конфигурации из файла
+config_file = 'config.json'
+if os.path.exists(config_file):
+    with open(config_file, 'r') as f:
+        # Если файл существует, загружаем его содержимое
+        config = json.load(f)
+else:
+    config = {}
+    # Если файл не существует, создаем пустой словарь
 
-# Читаем параметры из файла конфигурации
-with open('config.json', 'r') as f:
-    config = json.load(f)
+# Установка значений по умолчанию, если они не существуют
+config.setdefault('interval_ac', default_interval_ac)
+config.setdefault('interval_batt', default_interval_batt)
+config.setdefault('brightness_adjust', default_brightness_adjust)
+
+# Сохранение конфигурации в файл
+with open(config_file, 'w') as f:
+    # сохраяем конфигурационный файл с обновленными значениями
+    json.dump(config, f)
+
+# Теперь можно использовать значения конфигурации
 interval_ac = config['interval_ac']
 interval_batt = config['interval_batt']
-adjust_multiplier = config['adjust_multiplier']
+brightness_adjust = config['brightness_adjust']
 
 # Создаем интерфейс
 root = tk.Tk()
@@ -113,12 +134,12 @@ entry_interval_batt.insert(0, str(interval_batt))
 entry_interval_batt.pack()
 entry_interval_batt.bind('<KeyRelease>', save_config)
 
-label_adjust_multiplier = tk.Label(root, text="Коэффициент коррекции яркости:")
-label_adjust_multiplier.pack()
-entry_adjust_multiplier = tk.Entry(root, width=10)
-entry_adjust_multiplier.insert(0, str(adjust_multiplier))
-entry_adjust_multiplier.pack()
-entry_adjust_multiplier.bind('<KeyRelease>', save_config)
+label_brightness_adjust = tk.Label(root, text="Сдвиг яркости (в процентах):")
+label_brightness_adjust.pack()
+entry_brightness_adjust = tk.Entry(root, width=10)
+entry_brightness_adjust.insert(0, str(brightness_adjust))
+entry_brightness_adjust.pack()
+entry_brightness_adjust.bind('<KeyRelease>', save_config)
 
 def update_labels():
     global previous_brightnesses, brightness_avg_count
@@ -148,13 +169,15 @@ def on_closing():
 root.protocol("WM_DELETE_WINDOW", on_closing)
 
 def main_loop():
-    global previous_brightness, brightness_avg_count, interval_ac, interval_batt, adjust_multiplier
+    global previous_brightness, brightness_avg_count, interval_ac, interval_batt, brightness_adjust
     while running:
         # Определить источник питания
         on_battery = is_on_battery()
         # Таймаут на основе режима питания
         interval = int(entry_interval_ac.get()) if not on_battery else int(entry_interval_batt.get())
-        adjust_multiplier = float(entry_adjust_multiplier.get())
+
+        # Множитель яркости
+        brightness_adjust = int(entry_brightness_adjust.get())
         # debug(f"{'Сеть' if not on_battery else 'Батарея'}, таймаут: {interval} сек")
 
         # Сделать два замера с некоторым промежутком
@@ -167,7 +190,7 @@ def main_loop():
         brightness_percentage = int((brightness / 255) * 100)
 
         # Выравнивание, из-за нелинейной шкалы яркости в Windows 10
-        brightness_percentage = min(100, int(brightness_percentage * adjust_multiplier))
+        brightness_percentage = max(0, min(100, brightness_percentage * (100 + brightness_adjust + brightness_offset) / 100))
 
         # Берём среднее от трех последних замеров, для более плавного изменения
         if len(previous_brightnesses) < brightness_avg_count - 1:
