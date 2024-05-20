@@ -5,20 +5,12 @@ import win32con
 import win32gui
 import time
 import psutil
+import json
+import os
 import subprocess
+import threading
 import logging
 import tkinter as tk
-import threading
-
-# Настройка логирования
-logging.basicConfig(filename='autobrightness.log', level=logging.INFO)
-
-# Глобальные переменные
-previous_brightness = None
-interval_ac = 12
-interval_batt = 60
-adjust_multiplier = 1.53
-running = False
 
 def debug(text):
     logging.info(text)
@@ -47,11 +39,46 @@ def is_on_battery():
         return False
     return not battery.power_plugged
 
-# Создаем иконку в системном трее
-hWnd = win32gui.CreateWindow("STATIC", "", win32con.WS_OVERLAPPED | win32con.WS_SYSMENU, 0, 0, 0, 0, 0, 0, None, None)
-icon = win32gui.LoadImage(0, win32con.IDI_APPLICATION, win32con.IMAGE_ICON, 0, 0, win32con.LR_DEFAULTSIZE | win32con.LR_SHARED)
-nid = (hWnd, 0, win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP, win32con.WM_USER + 20, icon, "autobrightness")
-win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
+def show_in_tray(to_show):
+    global nid
+    if to_show:
+        hWnd = win32gui.CreateWindow("STATIC", "", win32con.WS_OVERLAPPED | win32con.WS_SYSMENU, 0, 0, 0, 0, 0, 0, None, None)
+        icon = win32gui.LoadImage(0, win32con.IDI_APPLICATION, win32con.IMAGE_ICON, 0, 0, win32con.LR_DEFAULTSIZE | win32con.LR_SHARED)
+        nid = (hWnd, 0, win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP, win32con.WM_USER + 20, icon, "autobrightness")
+        win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
+    else:
+        try:
+            win32gui.Shell_NotifyIcon(win32gui.NIM_DELETE, nid)
+        except Exception as e:
+            pass
+
+def save_config(event=None):
+    with open('config.json', 'w') as f:
+        json.dump({'interval_ac': int(entry_interval_ac.get()), 'interval_batt': int(entry_interval_batt.get()), 'adjust_multiplier': float(entry_adjust_multiplier.get())}, f)
+
+# Глобальные переменные
+previous_brightness = None
+interval_ac = 12
+interval_batt = 60
+adjust_multiplier = 1.53
+running = False
+
+nid = 0
+
+# Настройка логирования
+logging.basicConfig(filename='autobrightness.log', level=logging.INFO)
+
+# Создаем файл конфигурации, если он не существует
+if not os.path.exists('config.json'):
+    with open('config.json', 'w') as f:
+        json.dump({'interval_ac': 12, 'interval_batt': 60, 'adjust_multiplier': 1.53}, f)
+
+# Читаем параметры из файла конфигурации
+with open('config.json', 'r') as f:
+    config = json.load(f)
+interval_ac = config['interval_ac']
+interval_batt = config['interval_batt']
+adjust_multiplier = config['adjust_multiplier']
 
 # Создаем интерфейс
 root = tk.Tk()
@@ -73,18 +100,21 @@ label_interval_ac.pack()
 entry_interval_ac = tk.Entry(root, width=10)
 entry_interval_ac.insert(0, str(interval_ac))
 entry_interval_ac.pack()
+entry_interval_ac.bind('<KeyRelease>', save_config)
 
 label_interval_batt = tk.Label(root, text="Таймаут при питании от батареи (сек):")
 label_interval_batt.pack()
 entry_interval_batt = tk.Entry(root, width=10)
 entry_interval_batt.insert(0, str(interval_batt))
 entry_interval_batt.pack()
+entry_interval_batt.bind('<KeyRelease>', save_config)
 
 label_adjust_multiplier = tk.Label(root, text="Коэффициент коррекции яркости:")
 label_adjust_multiplier.pack()
 entry_adjust_multiplier = tk.Entry(root, width=10)
 entry_adjust_multiplier.insert(0, str(adjust_multiplier))
 entry_adjust_multiplier.pack()
+entry_adjust_multiplier.bind('<KeyRelease>', save_config)
 
 def update_labels():
     on_battery = is_on_battery()
@@ -109,7 +139,7 @@ update_labels()
 def on_closing():
     global running
     running = False
-    win32gui.Shell_NotifyIcon(win32gui.NIM_DELETE, nid)
+    show_in_tray(False)
     root.destroy()
 
 root.protocol("WM_DELETE_WINDOW", on_closing)
@@ -163,10 +193,11 @@ def start_stop():
         running = True
         threading.Thread(target=main_loop).start()
         button_start_stop.config(text="Стоп")
+        show_in_tray(True)
     else:
         running = False
         button_start_stop.config(text="Старт")
-        win32gui.Shell_NotifyIcon(win32gui.NIM_DELETE, nid)
+        show_in_tray(False)
 
 # Кнопка "Старт/стоп"
 button_start_stop = tk.Button(root, text="Старт", command=start_stop)
