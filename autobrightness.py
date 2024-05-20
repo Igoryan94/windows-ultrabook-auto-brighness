@@ -23,7 +23,7 @@ def calculate_brightness(image):
     # Разделяем каналы HSV
     h, s, v = cv2.split(hsv)
     # Возвращаем среднее значение канала V (яркость)
-    return np.mean(v)
+    return round(np.mean(v))
 
 # Функция для установки яркости дисплея
 def set_display_brightness(brightness):
@@ -159,17 +159,11 @@ def main_loop():
 
         # Сделать два замера с некоторым промежутком
         cap = cv2.VideoCapture(0)
-        ret, frame1 = cap.read()
-        time.sleep(0.3)
-        ret, frame2 = cap.read()
+        ret, frame = cap.read()
         cap.release()
 
-        # Вычислить уровень яркости для каждого замера
-        brightness1 = calculate_brightness(frame1)
-        brightness2 = calculate_brightness(frame2)
-
-        # Вычислить среднее значение яркости
-        brightness = round((brightness1 + brightness2) / 2)
+        # Вычисляем уровень яркости
+        brightness = calculate_brightness(frame)
         brightness_percentage = int((brightness / 255) * 100)
 
         # Выравнивание, из-за нелинейной шкалы яркости в Windows 10
