@@ -29,8 +29,14 @@ def calculate_brightness(image):
 
 # Функция для установки яркости дисплея
 def set_display_brightness(brightness):
+    # Вычитаем brightness_bright_background_offset, если режим "Яркий фон" включен
+    if bright_background_var.get():
+        brightness_to_set = max(5, brightness - brightness_bright_background_offset)
+    else:
+        brightness_to_set = max(5, brightness)
+
     # Вызываем PowerShell для изменения яркости
-    command = f"(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,{brightness})"
+    command = f"(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,{brightness_to_set})"
     info = subprocess.STARTUPINFO()
     info.dwFlags = subprocess.STARTF_USESHOWWINDOW
     info.wShowWindow = 0
@@ -59,7 +65,7 @@ def show_in_tray(to_show):
 
 def save_config(event=None):
     with open('config.json', 'w') as f:
-        json.dump({'interval_ac': int(entry_interval_ac.get()), 'interval_batt': int(entry_interval_batt.get()), 'brightness_adjust': scale_brightness_adjust.get()}, f)
+        json.dump({'interval_ac': int(entry_interval_ac.get()), 'interval_batt': int(entry_interval_batt.get()), 'brightness_adjust': scale_brightness_adjust.get(), 'bright_background': bright_background_var.get()}, f)
 
 # Глобальные переменные
 default_interval_ac = 12
@@ -69,9 +75,11 @@ default_brightness_adjust = 50
 interval_ac = default_interval_ac
 interval_batt = default_interval_batt
 brightness_adjust = default_brightness_adjust
+brightness_bright_background_offset = 0
 
 brightness_avg_count = 3
 previous_brightnesses = []
+brightness_bright_background_offset_value = 13
 
 brightness_offset = 3
 
@@ -110,7 +118,7 @@ brightness_adjust = config['brightness_adjust']
 # Создаем интерфейс
 root = tk.Tk()
 root.title("UltraBook Auto Brightness")
-root.geometry("330x285")
+root.geometry("330x330")
 
 # Применяем тему
 ttkthemes.themed_style = ttkthemes.ThemedStyle(root)
@@ -140,6 +148,12 @@ entry_interval_batt = ttk.Entry(root, width=10)
 entry_interval_batt.insert(0, str(interval_batt))
 entry_interval_batt.pack()
 entry_interval_batt.bind('<KeyRelease>', save_config)
+
+label_bright_background = ttk.Label(root, text="Режим \"Яркий объект на тёмном фоне\":")
+label_bright_background.pack()
+bright_background_var = tk.BooleanVar()
+bright_background_switch = ttk.Checkbutton(root, variable=bright_background_var, command=save_config)
+bright_background_switch.pack()
 
 label_brightness_adjust = ttk.Label(root, text="Регулировка яркости (в процентах):")
 label_brightness_adjust.pack(pady=(10, 0))
@@ -175,7 +189,7 @@ def on_closing():
 root.protocol("WM_DELETE_WINDOW", on_closing)
 
 def main_loop():
-    global previous_brightness, brightness_avg_count, interval_ac, interval_batt, brightness_adjust
+    global previous_brightness, brightness_avg_count, interval_ac, interval_batt, brightness_adjust, brightness_bright_background_offset
     while running:
         # Определить источник питания
         on_battery = is_on_battery()
@@ -194,6 +208,12 @@ def main_loop():
         # Вычисляем уровень яркости
         brightness = calculate_brightness(frame)
         brightness_percentage = int((brightness / 255) * 100)
+
+        # Если тумблер "Яркий фон" включен, устанавливаем brightness_bright_background_offset
+        if bright_background_var.get():
+            brightness_bright_background_offset = brightness_bright_background_offset_value
+        else:
+            brightness_bright_background_offset = 0
 
         # Выравнивание, из-за нелинейной шкалы яркости в Windows 10
         brightness_percentage = int(max(0, min(100, brightness_percentage * (100 + brightness_adjust + brightness_offset) / 100)))
