@@ -57,7 +57,7 @@ def show_in_tray(to_show):
 
 def save_config(event=None):
     with open('config.json', 'w') as f:
-        json.dump({'interval_ac': int(entry_interval_ac.get()), 'interval_batt': int(entry_interval_batt.get()), 'brightness_adjust': int(entry_brightness_adjust.get())}, f)
+        json.dump({'interval_ac': int(entry_interval_ac.get()), 'interval_batt': int(entry_interval_batt.get()), 'brightness_adjust': scale_brightness_adjust.get()}, f)
 
 # Глобальные переменные
 default_interval_ac = 12
@@ -107,8 +107,8 @@ brightness_adjust = config['brightness_adjust']
 
 # Создаем интерфейс
 root = tk.Tk()
-root.title("Auto Brightness")
-root.geometry("300x250")
+root.title("UltraBook Auto Brightness")
+root.geometry("300x285")
 
 label_power_source = tk.Label(root, text="Источник питания:")
 label_power_source.pack()
@@ -134,12 +134,11 @@ entry_interval_batt.insert(0, str(interval_batt))
 entry_interval_batt.pack()
 entry_interval_batt.bind('<KeyRelease>', save_config)
 
-label_brightness_adjust = tk.Label(root, text="Сдвиг яркости (в процентах):")
-label_brightness_adjust.pack()
-entry_brightness_adjust = tk.Entry(root, width=10)
-entry_brightness_adjust.insert(0, str(brightness_adjust))
-entry_brightness_adjust.pack()
-entry_brightness_adjust.bind('<KeyRelease>', save_config)
+label_brightness_adjust = tk.Label(root, text="Регулировка яркости (в процентах):")
+label_brightness_adjust.pack(pady=(10, 0))
+scale_brightness_adjust = tk.Scale(root, from_=0, to=100, orient=tk.HORIZONTAL, length=200, command=save_config)
+scale_brightness_adjust.set(brightness_adjust)
+scale_brightness_adjust.pack()
 
 def update_labels():
     global previous_brightnesses, brightness_avg_count
@@ -177,7 +176,7 @@ def main_loop():
         interval = int(entry_interval_ac.get()) if not on_battery else int(entry_interval_batt.get())
 
         # Множитель яркости
-        brightness_adjust = int(entry_brightness_adjust.get())
+        brightness_adjust = int(scale_brightness_adjust.get())
         # debug(f"{'Сеть' if not on_battery else 'Батарея'}, таймаут: {interval} сек")
 
         # Сделать два замера с некоторым промежутком
@@ -190,7 +189,7 @@ def main_loop():
         brightness_percentage = int((brightness / 255) * 100)
 
         # Выравнивание, из-за нелинейной шкалы яркости в Windows 10
-        brightness_percentage = max(0, min(100, brightness_percentage * (100 + brightness_adjust + brightness_offset) / 100))
+        brightness_percentage = int(max(0, min(100, brightness_percentage * (100 + brightness_adjust + brightness_offset) / 100)))
 
         # Берём среднее от трех последних замеров, для более плавного изменения
         if len(previous_brightnesses) < brightness_avg_count - 1:
