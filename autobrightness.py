@@ -32,7 +32,7 @@ def set_display_brightness(brightness):
     info = subprocess.STARTUPINFO()
     info.dwFlags = subprocess.STARTF_USESHOWWINDOW
     info.wShowWindow = 0
-    subprocess.Popen(["powershell", "Start-Process", "-WindowStyle", "Hidden", "-Command", command], startupinfo=info)
+    subprocess.Popen(["powershell", "-WindowStyle", "Hidden", "-Command", command], startupinfo=info)
 
 # Функция для определения источника питания (батарея или адаптер)
 def is_on_battery():
@@ -86,7 +86,7 @@ adjust_multiplier = config['adjust_multiplier']
 # Создаем интерфейс
 root = tk.Tk()
 root.title("Auto Brightness")
-root.geometry("300x235")
+root.geometry("300x250")
 
 label_power_source = tk.Label(root, text="Источник питания:")
 label_power_source.pack()
@@ -95,7 +95,7 @@ label_brightness = tk.Label(root, text="Яркость дисплея:")
 label_brightness.pack()
 
 label_status = tk.Label(root, text="Статус:")
-label_status.pack()
+label_status.pack(pady=(0, 10))
 
 # Добавляем поля для изменения параметров переменных
 label_interval_ac = tk.Label(root, text="Таймаут при питании от сети (сек):")
@@ -132,7 +132,7 @@ def update_labels():
     if brightness_percentage is not None:
         label_brightness.config(text=f"Яркость дисплея: {brightness_percentage}%")
 
-    status_text = "Работает" if brightness_percentage is not None else "Остановлен"
+    status_text = "Работает" if running else "Остановлен"
     label_status.config(text=f"Статус: {status_text}")
 
     root.after(1000, update_labels)
@@ -196,14 +196,16 @@ def start_stop():
         running = True
         threading.Thread(target=main_loop).start()
         button_start_stop.config(text="Стоп")
+        update_labels()
         show_in_tray(True)
     else:
         running = False
         button_start_stop.config(text="Старт")
+        update_labels()
         show_in_tray(False)
 
 # Кнопка "Старт/стоп"
 button_start_stop = tk.Button(root, text="Старт", command=start_stop)
-button_start_stop.pack(padx=10, pady=(5, 20))
+button_start_stop.pack(pady=15)
 
 root.mainloop()
