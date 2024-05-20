@@ -31,6 +31,10 @@ def is_on_battery():
     # Возвращаем состояние питания (True, если питание от адаптера, False, если от батареи)
     return psutil.sensors_battery().power_plugged
 
+def debug(text):
+    logging.info(text)
+    print(text)
+
 # Создаем иконку в системном трее
 hWnd = win32gui.CreateWindow("STATIC", "", win32con.WS_OVERLAPPED | win32con.WS_SYSMENU, 0, 0, 0, 0, 0, 0, 0, None)
 icon = win32gui.LoadImage(0, win32con.IDI_APPLICATION, win32con.IMAGE_ICON, 0, 0, win32con.LR_DEFAULTSIZE | win32con.LR_SHARED)
@@ -42,21 +46,24 @@ while True:
     # Определить источник питания
     interval = 30 if not is_on_battery() else 90  # 30 секунд, если питание от адаптера, 90 секунд, если от батареи
 
-    # Сделать снимок с веб-камеры
+    # Сделать два замера с некоторым промежутком
     cap = cv2.VideoCapture(0)
-    ret, frame = cap.read()
+    ret, frame1 = cap.read()
+    time.sleep(0.3)
+    ret, frame2 = cap.read()
     cap.release()
 
-    # Вычислить уровень яркости
-    brightness = calculate_brightness(frame)
+    # Вычислить уровень яркости для каждого замера
+    brightness1 = calculate_brightness(frame1)
+    brightness2 = calculate_brightness(frame2)
+
+    # Вычислить среднее значение яркости
+    brightness = round((brightness1 + brightness2) / 2)
     brightness_percentage = int((brightness / 255) * 100)
 
     # Выравнивание, из-за нелинейной шкалы яркости в Windows 10
     brightness_percentage = min(100, int(brightness_percentage * 1.53))
-
-    # Вывод текущего значения яркости
-    logging.info(f"Текущая яркость: {brightness_percentage}%")
-    print(f"Текущая яркость: {brightness_percentage}%")
+    debug(f"Яркость изображения: {brightness}, вычисленная яркость дисплея: {brightness_percentage}%")
 
     # Установить яркость дисплея
     set_display_brightness(brightness_percentage)
