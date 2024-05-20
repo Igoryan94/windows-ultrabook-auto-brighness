@@ -178,8 +178,8 @@ def main_loop():
 
         previous_brightness = brightness_percentage
 
-        # Установить яркость дисплея
-        set_display_brightness(brightness_percentage)
+        # Установить яркость дисплея, не ниже 5%
+        set_display_brightness(max(5, brightness_percentage))
 
         # Ждать интервал времени
         time.sleep(interval)
