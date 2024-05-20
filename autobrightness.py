@@ -51,7 +51,7 @@ win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
 while True:
     # Определить источник питания
     on_battery = is_on_battery()
-    interval = 30 if not on_battery else 90  # Таймаут на основе режима питания
+    interval = 12 if not on_battery else 60  # Таймаут на основе режима питания
     debug(f"{"Сеть" if not on_battery else "Батарея"}, таймаут: {interval} сек")
 
     # Сделать два замера с некоторым промежутком
