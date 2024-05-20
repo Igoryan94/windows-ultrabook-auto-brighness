@@ -11,6 +11,8 @@ import subprocess
 import threading
 import logging
 import tkinter as tk
+import tkinter.ttk as ttk
+import ttkthemes as ttkthemes
 
 def debug(text):
     logging.info(text)
@@ -108,35 +110,40 @@ brightness_adjust = config['brightness_adjust']
 # Создаем интерфейс
 root = tk.Tk()
 root.title("UltraBook Auto Brightness")
-root.geometry("300x285")
+root.geometry("330x285")
 
-label_power_source = tk.Label(root, text="Источник питания:")
-label_power_source.pack()
+# Применяем тему
+ttkthemes.themed_style = ttkthemes.ThemedStyle(root)
+ttkthemes.themed_style.set_theme("vista")
 
-label_brightness = tk.Label(root, text="Яркость дисплея:")
+# Настраиваем видимые элементы окна
+label_power_source = ttk.Label(root, text="Источник питания:")
+label_power_source.pack(pady=(20, 0))
+
+label_brightness = ttk.Label(root, text="Яркость дисплея:")
 label_brightness.pack()
 
-label_status = tk.Label(root, text="Статус:")
+label_status = ttk.Label(root, text="Статус:")
 label_status.pack(pady=(0, 10))
 
-# Добавляем поля для изменения параметров переменных
-label_interval_ac = tk.Label(root, text="Таймаут при питании от сети (сек):")
+# Добавляем элементы для изменения параметров переменных
+label_interval_ac = ttk.Label(root, text="Таймаут при питании от сети (сек):")
 label_interval_ac.pack()
-entry_interval_ac = tk.Entry(root, width=10)
+entry_interval_ac = ttk.Entry(root, width=10)
 entry_interval_ac.insert(0, str(interval_ac))
 entry_interval_ac.pack()
 entry_interval_ac.bind('<KeyRelease>', save_config)
 
-label_interval_batt = tk.Label(root, text="Таймаут при питании от батареи (сек):")
+label_interval_batt = ttk.Label(root, text="Таймаут при питании от батареи (сек):")
 label_interval_batt.pack()
-entry_interval_batt = tk.Entry(root, width=10)
+entry_interval_batt = ttk.Entry(root, width=10)
 entry_interval_batt.insert(0, str(interval_batt))
 entry_interval_batt.pack()
 entry_interval_batt.bind('<KeyRelease>', save_config)
 
-label_brightness_adjust = tk.Label(root, text="Регулировка яркости (в процентах):")
+label_brightness_adjust = ttk.Label(root, text="Регулировка яркости (в процентах):")
 label_brightness_adjust.pack(pady=(10, 0))
-scale_brightness_adjust = tk.Scale(root, from_=0, to=100, orient=tk.HORIZONTAL, length=200, command=save_config)
+scale_brightness_adjust = ttk.Scale(root, from_=0, to=100, orient=tk.HORIZONTAL, length=200, command=save_config)
 scale_brightness_adjust.set(brightness_adjust)
 scale_brightness_adjust.pack()
 
@@ -229,7 +236,7 @@ def start_stop():
         show_in_tray(False)
 
 # Кнопка "Старт/стоп"
-button_start_stop = tk.Button(root, text="Старт", command=start_stop)
+button_start_stop = ttk.Button(root, text="Старт", command=start_stop)
 button_start_stop.pack(pady=15)
 
 root.mainloop()
