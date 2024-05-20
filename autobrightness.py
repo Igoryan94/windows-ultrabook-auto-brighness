@@ -1,8 +1,9 @@
-# pip install opencv-python numpy psutil
+# pip install opencv-python numpy psutil pywin32
 
 import cv2
 import numpy as np
-import ctypes
+import win32api
+import win32con
 import time
 import psutil
 
@@ -14,8 +15,7 @@ def calculate_brightness(image):
 
 # Функция для установки яркости дисплея
 def set_display_brightness(brightness):
-    ctypes.c_ulong(0)
-    ctypes.windll.user32.SetMonitorBrightness(0, int(brightness))
+    win32api.SendMessage(win32con.HWND_BROADCAST, win32con.WM_SYSCOMMAND, win32con.SC_MONITORPOWER, brightness)
 
 # Функция для определения источника питания (батарея или адаптер)
 def get_power_source():
