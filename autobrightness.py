@@ -149,11 +149,16 @@ entry_interval_batt.insert(0, str(interval_batt))
 entry_interval_batt.pack()
 entry_interval_batt.bind('<KeyRelease>', save_config)
 
-label_bright_background = ttk.Label(root, text="Режим \"Яркий объект на тёмном фоне\":")
-label_bright_background.pack()
+frame_bright_background = ttk.Frame(root)
+frame_bright_background.pack(pady=(10, 0))
+
 bright_background_var = tk.BooleanVar()
-bright_background_switch = ttk.Checkbutton(root, variable=bright_background_var, command=save_config)
-bright_background_switch.pack()
+switch_bright_background = ttk.Checkbutton(frame_bright_background, variable=bright_background_var, command=save_config)
+switch_bright_background.pack(side=tk.LEFT)
+
+label_bright_background = ttk.Label(frame_bright_background, text="Режим \"Яркий объект на тёмном фоне\"")
+label_bright_background.pack(side=tk.RIGHT)
+label_bright_background.bind("<Button-1>", lambda event: bright_background_var.set(not bright_background_var.get()))
 
 label_brightness_adjust = ttk.Label(root, text="Регулировка яркости (в процентах):")
 label_brightness_adjust.pack(pady=(10, 0))
