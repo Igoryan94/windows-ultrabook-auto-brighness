@@ -63,7 +63,7 @@ def save_config(event=None):
 previous_brightness = None
 interval_ac = 12
 interval_batt = 60
-adjust_multiplier = 1.53
+adjust_multiplier = 1.5
 running = False
 
 nid = 0
@@ -74,7 +74,7 @@ logging.basicConfig(filename='autobrightness.log', level=logging.INFO)
 # Создаем файл конфигурации, если он не существует
 if not os.path.exists('config.json'):
     with open('config.json', 'w') as f:
-        json.dump({'interval_ac': 12, 'interval_batt': 60, 'adjust_multiplier': 1.53}, f)
+        json.dump({'interval_ac': 12, 'interval_batt': 60, 'adjust_multiplier': 1.5}, f)
 
 # Читаем параметры из файла конфигурации
 with open('config.json', 'r') as f:
