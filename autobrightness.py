@@ -7,6 +7,7 @@ import time
 import psutil
 import json
 import os
+import sys
 import subprocess
 import threading
 import logging
@@ -15,6 +16,9 @@ import tkinter.ttk as ttk
 import ttkthemes as ttkthemes
 
 def debug(text):
+    if getattr(sys, 'frozen', False):
+        # Проект запущен как собранный exe-файл, нет отладки
+        return
     logging.info(text)
     print(text)
 
@@ -87,8 +91,9 @@ running = False
 
 nid = 0
 
-# Настройка логирования
-logging.basicConfig(filename='autobrightness.log', level=logging.INFO)
+# Настройка логирования, если не релизный билд
+if not getattr(sys, 'frozen', False):
+    logging.basicConfig(filename='autobrightness.log', level=logging.INFO)
 
 # Загрузка конфигурации из файла
 config_file = 'config.json'
