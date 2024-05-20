@@ -11,6 +11,9 @@ import logging
 # Настройка логирования
 logging.basicConfig(filename='autobrightness.log', level=logging.INFO)
 
+# Глобальные переменные
+previous_brightness = None
+
 # Функция для вычисления уровня яркости изображения
 def calculate_brightness(image):
     # Конвертируем изображение в формат HSV
@@ -47,8 +50,9 @@ win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
 # Основной цикл
 while True:
     # Определить источник питания
-    interval = 30 if not is_on_battery() else 90  # Таймаут на основе режима питания
-    debug(interval)
+    on_battery = is_on_battery()
+    interval = 30 if not on_battery else 90  # Таймаут на основе режима питания
+    debug(f"{"Сеть" if not on_battery else "Батарея"}, таймаут: {interval} сек")
 
     # Сделать два замера с некоторым промежутком
     cap = cv2.VideoCapture(0)
@@ -67,7 +71,15 @@ while True:
 
     # Выравнивание, из-за нелинейной шкалы яркости в Windows 10
     brightness_percentage = min(100, int(brightness_percentage * 1.53))
-    debug(f"Яркость изображения: {brightness}, вычисленная яркость дисплея: {brightness_percentage}%")
+
+    # Берём среднее от текущего и прошлого замера, для более плавного изменения
+    if previous_brightness is not None:
+        brightness_percentage = int((brightness_percentage + previous_brightness) / 2)
+
+    prev_brightness_debug_text = f" (старая {previous_brightness}%)" if previous_brightness is not None else ""
+    debug(f"Яркость изображения: {brightness}, вычисленная яркость дисплея: {brightness_percentage}%{prev_brightness_debug_text}")
+
+    previous_brightness = brightness_percentage
 
     # Установить яркость дисплея
     set_display_brightness(brightness_percentage)
