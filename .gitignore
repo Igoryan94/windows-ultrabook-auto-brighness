@@ -1,2 +1,6 @@
 *.log
 *.json
+*.spec
+*.exe
+dist/
+build/
