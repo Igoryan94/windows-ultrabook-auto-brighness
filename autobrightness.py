@@ -29,7 +29,10 @@ def set_display_brightness(brightness):
 # Функция для определения источника питания (батарея или адаптер)
 def is_on_battery():
     # Возвращаем состояние питания (True, если питание от адаптера, False, если от батареи)
-    return psutil.sensors_battery().power_plugged
+    battery = psutil.sensors_battery()
+    if battery is None:
+        return False
+    return not battery.power_plugged
 
 def debug(text):
     logging.info(text)
@@ -44,7 +47,8 @@ win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
 # Основной цикл
 while True:
     # Определить источник питания
-    interval = 30 if not is_on_battery() else 90  # 30 секунд, если питание от адаптера, 90 секунд, если от батареи
+    interval = 30 if not is_on_battery() else 90  # Таймаут на основе режима питания
+    debug(interval)
 
     # Сделать два замера с некоторым промежутком
     cap = cv2.VideoCapture(0)
