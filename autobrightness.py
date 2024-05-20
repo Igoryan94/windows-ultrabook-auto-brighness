@@ -5,9 +5,7 @@ import win32con
 import win32gui
 import time
 import psutil
-
-# Команда для установки всех модульных зависимостей. Не удалять!
-# pip install opencv-python numpy psutil pywin32
+import subprocess
 
 # Функция для вычисления уровня яркости изображения
 def calculate_brightness(image):
@@ -20,8 +18,9 @@ def calculate_brightness(image):
 
 # Функция для установки яркости дисплея
 def set_display_brightness(brightness):
-    # Отправляем сообщение для установки яркости дисплея
-    win32api.SendMessage(win32con.HWND_BROADCAST, win32con.WM_SYSCOMMAND, win32con.SC_MONITORPOWER, brightness)
+    # Вызываем PowerShell для изменения яркости
+    command = f"(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,{brightness})"
+    subprocess.run(["powershell", "-Command", command])
 
 # Функция для определения источника питания (батарея или адаптер)
 def is_on_battery():
