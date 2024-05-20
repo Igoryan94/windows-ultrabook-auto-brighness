@@ -60,7 +60,8 @@ def save_config(event=None):
         json.dump({'interval_ac': int(entry_interval_ac.get()), 'interval_batt': int(entry_interval_batt.get()), 'adjust_multiplier': float(entry_adjust_multiplier.get())}, f)
 
 # Глобальные переменные
-previous_brightness = None
+previous_brightnesses = []
+brightness_avg_count = 3
 interval_ac = 12
 interval_batt = 60
 adjust_multiplier = 1.5
@@ -120,17 +121,16 @@ entry_adjust_multiplier.pack()
 entry_adjust_multiplier.bind('<KeyRelease>', save_config)
 
 def update_labels():
+    global previous_brightnesses, brightness_avg_count
     on_battery = is_on_battery()
     power_source_text = "Сеть" if not on_battery else "Батарея"
     label_power_source.config(text=f"Источник питания: {power_source_text}")
 
-    if previous_brightness is not None:
-        brightness_percentage = previous_brightness
+    if None not in previous_brightnesses:
+        brightness_percentage = int(sum(previous_brightnesses) / brightness_avg_count)
     else:
-        brightness_percentage = 90
-
-    if brightness_percentage is not None:
-        label_brightness.config(text=f"Яркость дисплея: {brightness_percentage}%")
+        brightness_percentage = previous_brightnesses[-1]
+    label_brightness.config(text=f"Яркость дисплея: {brightness_percentage}%")
 
     status_text = "Работает" if running else "Остановлен"
     label_status.config(text=f"Статус: {status_text}")
@@ -148,14 +148,14 @@ def on_closing():
 root.protocol("WM_DELETE_WINDOW", on_closing)
 
 def main_loop():
-    global previous_brightness, interval_ac, interval_batt, adjust_multiplier
+    global previous_brightness, brightness_avg_count, interval_ac, interval_batt, adjust_multiplier
     while running:
         # Определить источник питания
         on_battery = is_on_battery()
         # Таймаут на основе режима питания
         interval = int(entry_interval_ac.get()) if not on_battery else int(entry_interval_batt.get())
         adjust_multiplier = float(entry_adjust_multiplier.get())
-        debug(f"{'Сеть' if not on_battery else 'Батарея'}, таймаут: {interval} сек")
+        # debug(f"{'Сеть' if not on_battery else 'Батарея'}, таймаут: {interval} сек")
 
         # Сделать два замера с некоторым промежутком
         cap = cv2.VideoCapture(0)
@@ -169,14 +169,22 @@ def main_loop():
         # Выравнивание, из-за нелинейной шкалы яркости в Windows 10
         brightness_percentage = min(100, int(brightness_percentage * adjust_multiplier))
 
-        # Берём среднее от текущего и прошлого замера, для более плавного изменения
-        if previous_brightness is not None:
-            brightness_percentage = int((brightness_percentage + previous_brightness) / 2)
+        # Берём среднее от трех последних замеров, для более плавного изменения
+        if len(previous_brightnesses) < brightness_avg_count - 1:
+            while (len(previous_brightnesses) < brightness_avg_count - 1):
+                previous_brightnesses.append(brightness_percentage)
+        elif len(previous_brightnesses) == brightness_avg_count:
+            previous_brightnesses.pop(0)
+        previous_brightnesses.append(brightness_percentage)
 
-        prev_brightness_debug_text = f" (старая {previous_brightness}%)" if previous_brightness is not None else ""
-        debug(f"Яркость изображения: {brightness}, вычисленная яркость дисплея: {brightness_percentage}%{prev_brightness_debug_text}")
+        brightness_percentage = int(sum(previous_brightnesses) / brightness_avg_count)
 
-        previous_brightness = brightness_percentage
+        i = 0
+        string = ""
+        while i < len(previous_brightnesses):
+            string = f"{string + ", " if len(string) > 0 else ""}{previous_brightnesses[i]}"
+            i = i + 1
+        debug(string)
 
         # Установить яркость дисплея, не ниже 5%
         set_display_brightness(max(5, brightness_percentage))
