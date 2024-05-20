@@ -6,6 +6,10 @@ import win32gui
 import time
 import psutil
 import subprocess
+import logging
+
+# Настройка логирования
+logging.basicConfig(filename='autobrightness.log', level=logging.INFO)
 
 # Функция для вычисления уровня яркости изображения
 def calculate_brightness(image):
@@ -36,7 +40,7 @@ win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
 # Основной цикл
 while True:
     # Определить источник питания
-    interval = 30 if not is_on_battery() else 180  # 30 секунд, если питание от адаптера, 3 минуты, если от батареи
+    interval = 30 if not is_on_battery() else 90  # 30 секунд, если питание от адаптера, 90 секунд, если от батареи
 
     # Сделать снимок с веб-камеры
     cap = cv2.VideoCapture(0)
@@ -46,6 +50,13 @@ while True:
     # Вычислить уровень яркости
     brightness = calculate_brightness(frame)
     brightness_percentage = int((brightness / 255) * 100)
+
+    # Выравнивание, из-за нелинейной шкалы яркости в Windows 10
+    brightness_percentage = min(100, int(brightness_percentage * 1.53))
+
+    # Вывод текущего значения яркости
+    logging.info(f"Текущая яркость: {brightness_percentage}%")
+    print(f"Текущая яркость: {brightness_percentage}%")
 
     # Установить яркость дисплея
     set_display_brightness(brightness_percentage)
