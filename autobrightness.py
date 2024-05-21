@@ -15,6 +15,8 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import ttkthemes as ttkthemes
 
+program_version = 0.90
+
 def debug(text):
     if getattr(sys, 'frozen', False):
         # Проект запущен как собранный exe-файл, нет отладки
@@ -136,7 +138,7 @@ label_power_source.pack(pady=(20, 0))
 label_brightness = ttk.Label(root, text="Яркость дисплея:")
 label_brightness.pack()
 
-label_status = ttk.Label(root, text="Статус:")
+label_status = ttk.Label(root, text="Состояние:")
 label_status.pack(pady=(0, 10))
 
 # Добавляем элементы для изменения параметров переменных
@@ -184,7 +186,7 @@ def update_labels():
     label_brightness.config(text=f"Яркость дисплея: {brightness_percentage}%")
 
     status_text = "Работает" if running else "Остановлен"
-    label_status.config(text=f"Статус: {status_text}")
+    label_status.config(text=f"Состояние: {status_text}")
 
     root.after(1000, update_labels)
 
@@ -195,6 +197,15 @@ def on_closing():
     running = False
     show_in_tray(False)
     root.destroy()
+
+def start_daemon():
+    global running
+    running = True
+    threading.Thread(target=main_loop).start()
+    show_in_tray(True)
+    button_start_stop.config(text="Стоп")
+    update_labels()
+    root.iconify()
 
 root.protocol("WM_DELETE_WINDOW", on_closing)
 
@@ -269,4 +280,5 @@ def start_stop():
 button_start_stop = ttk.Button(root, text="Старт", command=start_stop)
 button_start_stop.pack(pady=15)
 
+start_daemon()
 root.mainloop()
