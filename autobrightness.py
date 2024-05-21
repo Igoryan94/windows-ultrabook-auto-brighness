@@ -15,6 +15,11 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import ttkthemes as ttkthemes
 
+import matplotlib
+matplotlib.use('TkAgg')
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 program_version = 0.90
 
 def debug(text):
@@ -69,6 +74,10 @@ def show_in_tray(to_show):
         except Exception as e:
             pass
 
+def on_graph_click(event):
+        # Открываем файл конфига в блокноте
+        os.startfile('config.json')
+
 def save_config(event=None):
     with open('config.json', 'w') as f:
         config = {
@@ -76,7 +85,7 @@ def save_config(event=None):
             'interval_batt': int(entry_interval_batt.get()),
             'brightness_adjust': scale_brightness_adjust.get(),
             'bright_background': bright_background_var.get(),
-            'brightness_table': brightness_table
+            'brightness_table': {str(k): v for k, v in brightness_table.items()}
         }
         json.dump(config, f, indent=4)
 
@@ -151,42 +160,46 @@ brightness_table = config['brightness_table']
 # Создаем интерфейс
 root = tk.Tk()
 root.title("UltraBook Auto Brightness")
-root.geometry("330x340")
+root.geometry("800x400")
 
 # Применяем тему
 ttkthemes.themed_style = ttkthemes.ThemedStyle(root)
 ttkthemes.themed_style.set_theme("vista")
 
+# Создаем фрейм для интерфейса
+interface_frame = ttk.Frame(root)
+interface_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
 # Настраиваем видимые элементы окна
 label_power_source = ttk.Label(root, text="Источник питания:")
-label_power_source.pack(pady=(20, 0))
+label_power_source.pack(in_=interface_frame, pady=(20, 0))
 
 label_brightness = ttk.Label(root, text="Яркость дисплея:")
-label_brightness.pack()
+label_brightness.pack(in_=interface_frame)
 
 label_ambient_brightness = ttk.Label(root, text="Окружающая яркость:")
-label_ambient_brightness.pack()
+label_ambient_brightness.pack(in_=interface_frame)
 
 label_status = ttk.Label(root, text="Состояние:")
-label_status.pack(pady=(0, 10))
+label_status.pack(in_=interface_frame, pady=(0, 10))
 
 # Добавляем элементы для изменения параметров переменных
 label_interval_ac = ttk.Label(root, text="Таймаут при питании от сети (сек):")
-label_interval_ac.pack()
+label_interval_ac.pack(in_=interface_frame)
 entry_interval_ac = ttk.Entry(root, width=10)
 entry_interval_ac.insert(0, str(interval_ac))
-entry_interval_ac.pack()
+entry_interval_ac.pack(in_=interface_frame)
 entry_interval_ac.bind('<KeyRelease>', save_config)
 
 label_interval_batt = ttk.Label(root, text="Таймаут при питании от батареи (сек):")
-label_interval_batt.pack()
+label_interval_batt.pack(in_=interface_frame)
 entry_interval_batt = ttk.Entry(root, width=10)
 entry_interval_batt.insert(0, str(interval_batt))
-entry_interval_batt.pack()
+entry_interval_batt.pack(in_=interface_frame)
 entry_interval_batt.bind('<KeyRelease>', save_config)
 
 frame_bright_background = ttk.Frame(root)
-frame_bright_background.pack(pady=(10, 0))
+frame_bright_background.pack(in_=interface_frame, pady=(10, 0))
 
 bright_background_var = tk.BooleanVar()
 switch_bright_background = ttk.Checkbutton(frame_bright_background, variable=bright_background_var, command=save_config)
@@ -197,10 +210,26 @@ label_bright_background.pack(side=tk.RIGHT)
 label_bright_background.bind("<Button-1>", lambda event: bright_background_var.set(not bright_background_var.get()))
 
 label_brightness_adjust = ttk.Label(root, text="Регулировка яркости (в процентах):")
-label_brightness_adjust.pack(pady=(10, 0))
+label_brightness_adjust.pack(in_=interface_frame, pady=(10, 0))
 scale_brightness_adjust = ttk.Scale(root, from_=0, to=100, orient=tk.HORIZONTAL, length=200, command=save_config)
 scale_brightness_adjust.set(brightness_adjust)
-scale_brightness_adjust.pack()
+scale_brightness_adjust.pack(in_=interface_frame)
+
+# Создаем фрейм для графика
+graph_frame = ttk.Frame(root)
+graph_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+# Создаем график
+fig = Figure(figsize=(5, 4), dpi=100)
+ax = fig.add_subplot(111)
+ax.set_title("Таблица яркости")
+ax.set_xlabel("Окружающая яркость")
+ax.set_ylabel("Яркость дисплея, %")
+canvas = FigureCanvasTkAgg(fig, master=graph_frame)
+canvas.draw()
+canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+# TODO: доделать изменение таблицы кликами по нужным точкам графика
+canvas.mpl_connect('button_release_event', on_graph_click)
 
 def update_labels():
     global previous_brightnesses, brightness_avg_count, ambient_brightness
@@ -218,6 +247,13 @@ def update_labels():
 
     status_text = "Работает" if running else "Остановлен"
     label_status.config(text=f"Состояние: {status_text}")
+
+    ax.clear()
+    ax.set_title("Таблица brightness_table")
+    ax.set_xlabel("Окружающая яркость")
+    ax.set_ylabel("Яркость дисплея, %")
+    ax.plot(list(brightness_table.keys()), list(brightness_table.values()))
+    canvas.draw()
 
     root.after(1000, update_labels)
 
@@ -325,7 +361,7 @@ def start_stop():
 
 # Кнопка "Старт/стоп"
 button_start_stop = ttk.Button(root, text="Старт", command=start_stop)
-button_start_stop.pack(pady=15)
+button_start_stop.pack(in_=interface_frame, pady=15)
 
 start_daemon()
 root.mainloop()
