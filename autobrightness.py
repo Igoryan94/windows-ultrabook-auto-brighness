@@ -92,8 +92,8 @@ default_brightness_table = {
     70: 65,
     85: 66,
     100: 68,
-    115: 71,
-    130: 80,
+    115: 73,
+    130: 79,
     145: 88,
     160: 92,
     220: 100
@@ -110,6 +110,8 @@ previous_brightnesses = []
 brightness_bright_background_offset_value = 13
 
 brightness_offset = 3
+
+ambient_brightness = 255
 
 running = False
 
@@ -149,7 +151,7 @@ brightness_table = config['brightness_table']
 # Создаем интерфейс
 root = tk.Tk()
 root.title("UltraBook Auto Brightness")
-root.geometry("330x330")
+root.geometry("330x340")
 
 # Применяем тему
 ttkthemes.themed_style = ttkthemes.ThemedStyle(root)
@@ -161,6 +163,9 @@ label_power_source.pack(pady=(20, 0))
 
 label_brightness = ttk.Label(root, text="Яркость дисплея:")
 label_brightness.pack()
+
+label_ambient_brightness = ttk.Label(root, text="Окружающая яркость:")
+label_ambient_brightness.pack()
 
 label_status = ttk.Label(root, text="Состояние:")
 label_status.pack(pady=(0, 10))
@@ -198,7 +203,7 @@ scale_brightness_adjust.set(brightness_adjust)
 scale_brightness_adjust.pack()
 
 def update_labels():
-    global previous_brightnesses, brightness_avg_count
+    global previous_brightnesses, brightness_avg_count, ambient_brightness
     on_battery = is_on_battery()
     power_source_text = "Сеть" if not on_battery else "Батарея"
     label_power_source.config(text=f"Источник питания: {power_source_text}")
@@ -208,6 +213,8 @@ def update_labels():
     else:
         brightness_percentage = previous_brightnesses[-1]
     label_brightness.config(text=f"Яркость дисплея: {brightness_percentage}%")
+
+    label_ambient_brightness.config(text=f"Окружающая яркость: {ambient_brightness}")
 
     status_text = "Работает" if running else "Остановлен"
     label_status.config(text=f"Состояние: {status_text}")
@@ -234,7 +241,7 @@ def start_daemon():
 root.protocol("WM_DELETE_WINDOW", on_closing)
 
 def main_loop():
-    global previous_brightness, brightness_avg_count, interval_ac, interval_batt, brightness_adjust, brightness_bright_background_offset, brightness_table
+    global previous_brightness, brightness_avg_count, interval_ac, interval_batt, brightness_adjust, brightness_bright_background_offset, brightness_table, ambient_brightness
     while running:
         # Определить источник питания
         on_battery = is_on_battery()
@@ -247,7 +254,6 @@ def main_loop():
 
         # Делаем замер с камеры
         cap = cv2.VideoCapture(0)
-        # Установить разрешение 320x240 пикселей
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 70)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 70)
         cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
@@ -255,22 +261,22 @@ def main_loop():
         cap.release()
 
         # Вычисляем уровень яркости
-        brightness = calculate_brightness(frame)
+        ambient_brightness = calculate_brightness(frame)
 
         # Интерполируем значение яркости в диапазоне от 0 до 100
         brightness_percentage = 0
         brightness_table_keys = sorted(brightness_table.keys())
         for i, key in enumerate(brightness_table_keys):
-            if brightness <= int(key):
+            if ambient_brightness <= int(key):
                 brightness_percentage = brightness_table[key]
                 break
             elif i == len(brightness_table_keys) - 1:
                 brightness_percentage = brightness_table[key]
             else:
                 next_key = brightness_table_keys[i + 1]
-                if brightness >= int(next_key):
+                if ambient_brightness >= int(next_key):
                     continue
-                brightness_percentage = brightness_table[key] + (brightness - int(key)) * (brightness_table[next_key] - brightness_table[key]) / (int(next_key) - int(key))
+                brightness_percentage = brightness_table[key] + (ambient_brightness - int(key)) * (brightness_table[next_key] - brightness_table[key]) / (int(next_key) - int(key))
                 break
 
         # Если тумблер "Яркий фон" включен, устанавливаем brightness_bright_background_offset
@@ -294,11 +300,11 @@ def main_loop():
         while i < len(previous_brightnesses):
             string = f"{string + ", " if len(string) > 0 else ""}{previous_brightnesses[i]}"
             i = i + 1
-        string = f"Яркость сэмпла: {brightness}, список % яркости: {string}"
+        string = f"Яркость сэмпла: {ambient_brightness}, список % яркости: {string}"
         debug(string)
 
         # Установить яркость дисплея, не ниже 5%
-        set_display_brightness(max(5, brightness_percentage))
+        set_display_brightness(int(brightness_percentage))
 
         # Ждать интервал времени
         time.sleep(interval)
