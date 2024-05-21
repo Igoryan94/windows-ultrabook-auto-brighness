@@ -221,8 +221,12 @@ def main_loop():
         brightness_adjust = int(scale_brightness_adjust.get())
         # debug(f"{'Сеть' if not on_battery else 'Батарея'}, таймаут: {interval} сек")
 
-        # Сделать два замера с некоторым промежутком
+        # Делаем замер с камеры
         cap = cv2.VideoCapture(0)
+        # Установить разрешение 320x240 пикселей
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 70)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 70)
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
         ret, frame = cap.read()
         cap.release()
 
