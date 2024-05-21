@@ -71,17 +71,39 @@ def show_in_tray(to_show):
 
 def save_config(event=None):
     with open('config.json', 'w') as f:
-        json.dump({'interval_ac': int(entry_interval_ac.get()), 'interval_batt': int(entry_interval_batt.get()), 'brightness_adjust': scale_brightness_adjust.get(), 'bright_background': bright_background_var.get()}, f)
+        config = {
+            'interval_ac': int(entry_interval_ac.get()),
+            'interval_batt': int(entry_interval_batt.get()),
+            'brightness_adjust': scale_brightness_adjust.get(),
+            'bright_background': bright_background_var.get(),
+            'brightness_table': brightness_table
+        }
+        json.dump(config, f, indent=4)
 
 # Глобальные переменные
 default_interval_ac = 12
 default_interval_batt = 60
 default_brightness_adjust = 50
+default_brightness_table = {
+    0: 48,
+    25: 54,
+    40: 58,
+    55: 62,
+    70: 65,
+    85: 66,
+    100: 68,
+    115: 71,
+    130: 80,
+    145: 88,
+    160: 92,
+    220: 100
+}
 
 interval_ac = default_interval_ac
 interval_batt = default_interval_batt
 brightness_adjust = default_brightness_adjust
 brightness_bright_background_offset = 0
+brightness_table = default_brightness_table
 
 brightness_avg_count = 3
 previous_brightnesses = []
@@ -111,6 +133,7 @@ else:
 config.setdefault('interval_ac', default_interval_ac)
 config.setdefault('interval_batt', default_interval_batt)
 config.setdefault('brightness_adjust', default_brightness_adjust)
+config.setdefault('brightness_table', default_brightness_table)
 
 # Сохранение конфигурации в файл
 with open(config_file, 'w') as f:
@@ -121,6 +144,7 @@ with open(config_file, 'w') as f:
 interval_ac = config['interval_ac']
 interval_batt = config['interval_batt']
 brightness_adjust = config['brightness_adjust']
+brightness_table = config['brightness_table']
 
 # Создаем интерфейс
 root = tk.Tk()
@@ -210,7 +234,7 @@ def start_daemon():
 root.protocol("WM_DELETE_WINDOW", on_closing)
 
 def main_loop():
-    global previous_brightness, brightness_avg_count, interval_ac, interval_batt, brightness_adjust, brightness_bright_background_offset
+    global previous_brightness, brightness_avg_count, interval_ac, interval_batt, brightness_adjust, brightness_bright_background_offset, brightness_table
     while running:
         # Определить источник питания
         on_battery = is_on_battery()
@@ -232,16 +256,28 @@ def main_loop():
 
         # Вычисляем уровень яркости
         brightness = calculate_brightness(frame)
-        brightness_percentage = int((brightness / 255) * 100)
+
+        # Интерполируем значение яркости в диапазоне от 0 до 100
+        brightness_percentage = 0
+        brightness_table_keys = sorted(brightness_table.keys())
+        for i, key in enumerate(brightness_table_keys):
+            if brightness <= int(key):
+                brightness_percentage = brightness_table[key]
+                break
+            elif i == len(brightness_table_keys) - 1:
+                brightness_percentage = brightness_table[key]
+            else:
+                next_key = brightness_table_keys[i + 1]
+                if brightness >= int(next_key):
+                    continue
+                brightness_percentage = brightness_table[key] + (brightness - int(key)) * (brightness_table[next_key] - brightness_table[key]) / (int(next_key) - int(key))
+                break
 
         # Если тумблер "Яркий фон" включен, устанавливаем brightness_bright_background_offset
         if bright_background_var.get():
             brightness_bright_background_offset = brightness_bright_background_offset_value
         else:
             brightness_bright_background_offset = 0
-
-        # Выравнивание, из-за нелинейной шкалы яркости в Windows 10
-        brightness_percentage = int(max(0, min(100, brightness_percentage * (100 + brightness_adjust + brightness_offset) / 100)))
 
         # Берём среднее от трех последних замеров, для более плавного изменения
         if len(previous_brightnesses) < brightness_avg_count - 1:
@@ -258,6 +294,7 @@ def main_loop():
         while i < len(previous_brightnesses):
             string = f"{string + ", " if len(string) > 0 else ""}{previous_brightnesses[i]}"
             i = i + 1
+        string = f"Яркость сэмпла: {brightness}, список % яркости: {string}"
         debug(string)
 
         # Установить яркость дисплея, не ниже 5%
