@@ -248,7 +248,7 @@ def update_labels():
     label_status.config(text=f"Состояние: {status_text}")
 
     ax.clear()
-    ax.set_title("Таблица brightness_table")
+    ax.set_title("График по таблице соответствия % яркости окружению")
     ax.set_xlabel("Окружающая яркость")
     ax.set_ylabel("Яркость дисплея, %")
     ax.plot(list(brightness_table.keys()), list(brightness_table.values()))
