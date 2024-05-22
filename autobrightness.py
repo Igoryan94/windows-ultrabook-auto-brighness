@@ -15,12 +15,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import ttkthemes as ttkthemes
 
-import matplotlib
-matplotlib.use('TkAgg')
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
-program_version = 0.90
+program_version = 0.91
 
 def debug(text):
     if getattr(sys, 'frozen', False):
@@ -73,10 +68,6 @@ def show_in_tray(to_show):
             win32gui.Shell_NotifyIcon(win32gui.NIM_DELETE, nid)
         except Exception as e:
             pass
-
-def on_graph_click(event):
-        # Открываем файл конфига в блокноте
-        os.startfile('config.json')
 
 def save_config(event=None):
     with open('config.json', 'w') as f:
@@ -160,7 +151,7 @@ brightness_table = config['brightness_table']
 # Создаем интерфейс
 root = tk.Tk()
 root.title("UltraBook Auto Brightness")
-root.geometry("800x400")
+root.geometry("560x450")
 
 # Применяем тему
 ttkthemes.themed_style = ttkthemes.ThemedStyle(root)
@@ -215,22 +206,84 @@ scale_brightness_adjust = ttk.Scale(root, from_=0, to=100, orient=tk.HORIZONTAL,
 scale_brightness_adjust.set(brightness_adjust)
 scale_brightness_adjust.pack(in_=interface_frame)
 
-# Создаем фрейм для графика
-graph_frame = ttk.Frame(root)
-graph_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+# Создание фрейма для таблицы
+table_frame = ttk.Frame(root)
+table_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-# Создаем график
-fig = Figure(figsize=(5, 4), dpi=100)
-ax = fig.add_subplot(111)
-ax.set_title("Таблица яркости")
-ax.set_xlabel("Окружающая яркость")
-ax.set_ylabel("Яркость дисплея, %")
-canvas = FigureCanvasTkAgg(fig, master=graph_frame)
-canvas.draw()
-canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-# TODO: доделать изменение таблицы кликами по нужным точкам графика
-canvas.mpl_connect('button_release_event', on_graph_click)
+# Создание таблицы
+table = ttk.Treeview(table_frame, columns=("brightness", "display_brightness"))
+table.column("#0", width=0, stretch=tk.NO)
+table.pack(fill=tk.BOTH, expand=True)
 
+# Настройка заголовков столбцов
+table.heading("brightness", text="Окружающая яркость", anchor=tk.CENTER)
+table.heading("display_brightness", text="Яркость дисплея, %", anchor=tk.CENTER)
+
+# Настройка ширины столбцов
+table.column("brightness", minwidth=100, width=100, stretch=tk.YES)
+table.column("display_brightness", minwidth=100, width=100, stretch=tk.YES)
+table.rowconfigure(0, weight=1)
+
+# Функция для выравнивания столбцов
+def resize_columns(event):
+    table.column("brightness", width=table.winfo_width() // 2, anchor=tk.CENTER)
+    table.column("display_brightness", width=table.winfo_width() // 2, anchor=tk.CENTER)
+
+# Привязываем функцию к событию изменения размера окна
+table.bind("<Configure>", resize_columns)
+# resize_columns("")
+
+# Функции для работы с таблицей
+def add_row():
+    table.insert("", "end", values=(entry_table_ambient_brightness.get(), entry_table_display_brightness.get()), tags=("center",))
+    brightness_table[entry_table_ambient_brightness.get()] = int(entry_table_display_brightness.get())
+    save_config()
+
+def delete_row():
+    selected = table.selection()
+    if selected:
+        key = table.item(selected[0], "values")[0]
+        del brightness_table[key]
+        table.delete(selected[0])
+        save_config()
+
+def edit_row(event):
+    selected = table.selection()
+    if selected:
+        old_key = table.item(selected[0], "values")[0]
+        new_key = entry_table_ambient_brightness.get()
+        new_value_str = entry_table_display_brightness.get()
+        if new_value_str:
+            new_value = int(new_value_str)
+            brightness_table[new_key] = new_value
+            del brightness_table[old_key]
+            table.item(selected[0], values=(new_key, new_value), tags=("center",))
+            save_config()
+        else:
+            # Если значение пустое, выводим сообщение об ошибке или игнорируем изменение
+            debug("Значение яркости дисплея не может быть пустым.")
+
+# Кнопки для работы с таблицей
+button_add = ttk.Button(table_frame, text="Добавить", command=add_row)
+button_add.pack(side=tk.TOP, pady=5)
+
+button_delete = ttk.Button(table_frame, text="Удалить", command=delete_row)
+button_delete.pack(side=tk.TOP, pady=5)
+
+# Поля для ввода значений для редактирования
+label_table_ambient_brightness = ttk.Label(table_frame, text="Окружающая яркость:")
+label_table_ambient_brightness.pack(side=tk.TOP, pady=5)
+entry_table_ambient_brightness = ttk.Entry(table_frame)
+entry_table_ambient_brightness.pack(side=tk.TOP, pady=5)
+
+label_table_display_brightness = ttk.Label(table_frame, text="Яркость дисплея, %:")
+label_table_display_brightness.pack(side=tk.TOP, pady=5)
+entry_table_display_brightness = ttk.Entry(table_frame)
+entry_table_display_brightness.pack(side=tk.TOP, pady=5)
+
+table.bind("<Double-1>", edit_row)
+
+# Обновление интерфейса
 def update_labels():
     global previous_brightnesses, brightness_avg_count, ambient_brightness
     on_battery = is_on_battery()
@@ -247,12 +300,10 @@ def update_labels():
     status_text = "Работает" if running else "Остановлен"
     label_status.config(text=f"Состояние: {status_text}")
 
-    ax.clear()
-    ax.set_title("График по таблице соответствия % яркости окружению")
-    ax.set_xlabel("Окружающая яркость")
-    ax.set_ylabel("Яркость дисплея, %")
-    ax.plot(list(brightness_table.keys()), list(brightness_table.values()))
-    canvas.draw()
+    # Заполнение таблицы из brightness_table
+    table.delete(*table.get_children())
+    for key, value in brightness_table.items():
+        table.insert("", "end", values=(key, value))
 
     root.after(1000, update_labels)
 
