@@ -35,11 +35,15 @@ def calculate_brightness(image):
 
 # Функция для установки яркости дисплея
 def set_display_brightness(brightness):
+    # Множитель яркости
+    brightness_adjust = int(scale_brightness_adjust.get())
+
     # Вычитаем brightness_bright_background_offset, если режим "Яркий фон" включен
     if bright_background_var.get():
         brightness_to_set = max(5, brightness - brightness_bright_background_offset)
     else:
         brightness_to_set = max(5, brightness)
+    brightness_to_set = brightness_to_set * brightness_adjust / 50
 
     # Вызываем PowerShell для изменения яркости
     command = f"(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,{brightness_to_set})"
@@ -74,7 +78,7 @@ def save_config(event=None):
         config = {
             'interval_ac': int(entry_interval_ac.get()),
             'interval_batt': int(entry_interval_batt.get()),
-            'brightness_adjust': scale_brightness_adjust.get(),
+            'brightness_adjust': int(scale_brightness_adjust.get()),
             'bright_background': bright_background_var.get(),
             'brightness_table': {str(k): v for k, v in brightness_table.items()}
         }
@@ -350,15 +354,13 @@ def start_daemon():
 root.protocol("WM_DELETE_WINDOW", on_closing)
 
 def main_loop():
-    global previous_brightness, brightness_avg_count, interval_ac, interval_batt, brightness_adjust, brightness_bright_background_offset, brightness_table, ambient_brightness
+    global previous_brightness, brightness_avg_count, interval_ac, interval_batt, brightness_bright_background_offset, brightness_table, ambient_brightness
     while running:
         # Определить источник питания
         on_battery = is_on_battery()
         # Таймаут на основе режима питания
         interval = int(entry_interval_ac.get()) if not on_battery else int(entry_interval_batt.get())
 
-        # Множитель яркости
-        brightness_adjust = int(scale_brightness_adjust.get())
         # debug(f"{'Сеть' if not on_battery else 'Батарея'}, таймаут: {interval} сек")
 
         # Делаем замер с камеры
