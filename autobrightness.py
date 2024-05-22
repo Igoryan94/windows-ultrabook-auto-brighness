@@ -165,11 +165,11 @@ interface_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 label_power_source = ttk.Label(root, text="Источник питания:")
 label_power_source.pack(in_=interface_frame, pady=(20, 0))
 
-label_brightness = ttk.Label(root, text="Яркость дисплея:")
-label_brightness.pack(in_=interface_frame)
-
 label_ambient_brightness = ttk.Label(root, text="Окружающая яркость:")
 label_ambient_brightness.pack(in_=interface_frame)
+
+label_brightness = ttk.Label(root, text="Яркость дисплея:")
+label_brightness.pack(in_=interface_frame)
 
 label_status = ttk.Label(root, text="Состояние:")
 label_status.pack(in_=interface_frame, pady=(0, 10))
@@ -205,6 +205,29 @@ label_brightness_adjust.pack(in_=interface_frame, pady=(10, 0))
 scale_brightness_adjust = ttk.Scale(root, from_=0, to=100, orient=tk.HORIZONTAL, length=200, command=save_config)
 scale_brightness_adjust.set(brightness_adjust)
 scale_brightness_adjust.pack(in_=interface_frame)
+
+# Кнопка "Открыть конфиг"
+button_open_config = ttk.Button(root, text="Открыть конфиг", command=lambda: os.startfile("config.json"))
+button_open_config.pack(in_=interface_frame, pady=(20, 0))
+
+# Кнопка "Загрузить параметры из конфига"
+def load_config_params():
+    global interval_ac, interval_batt, brightness_adjust, brightness_table
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+    interval_ac = config['interval_ac']
+    interval_batt = config['interval_batt']
+    brightness_adjust = config['brightness_adjust']
+    brightness_table = config['brightness_table']
+    entry_interval_ac.delete(0, tk.END)
+    entry_interval_ac.insert(0, str(interval_ac))
+    entry_interval_batt.delete(0, tk.END)
+    entry_interval_batt.insert(0, str(interval_batt))
+    scale_brightness_adjust.set(brightness_adjust)
+    save_config()
+
+button_load_config = ttk.Button(root, text="Загрузить параметры из конфига", command=load_config_params)
+button_load_config.pack(in_=interface_frame, pady=(0, 20))
 
 # Создание фрейма для таблицы
 table_frame = ttk.Frame(root)
