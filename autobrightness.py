@@ -238,10 +238,9 @@ def update_labels():
     label_power_source.config(text=f"Источник питания: {power_source_text}")
 
     if None not in previous_brightnesses:
-        brightness_percentage = int(sum(previous_brightnesses) / brightness_avg_count)
-    else:
-        brightness_percentage = previous_brightnesses[-1]
-    label_brightness.config(text=f"Яркость дисплея: {brightness_percentage}%")
+        if len(previous_brightnesses) > 1:
+            brightness_percentage = previous_brightnesses[len(previous_brightnesses) - 1]
+            label_brightness.config(text=f"Яркость дисплея: {brightness_percentage}%")
 
     label_ambient_brightness.config(text=f"Окружающая яркость: {ambient_brightness}")
 
