@@ -354,15 +354,15 @@ def main_loop():
         brightness_table_keys = sorted(brightness_table.keys())
         for i, key in enumerate(brightness_table_keys):
             if ambient_brightness <= int(key):
-                brightness_percentage = brightness_table[key]
+                brightness_percentage = int(brightness_table[key])
                 break
             elif i == len(brightness_table_keys) - 1:
-                brightness_percentage = brightness_table[key]
+                brightness_percentage = int(brightness_table[key])
             else:
                 next_key = brightness_table_keys[i + 1]
                 if ambient_brightness >= int(next_key):
                     continue
-                brightness_percentage = brightness_table[key] + (ambient_brightness - int(key)) * (brightness_table[next_key] - brightness_table[key]) / (int(next_key) - int(key))
+                brightness_percentage = int(brightness_table[key] + (ambient_brightness - int(key)) * (brightness_table[next_key] - brightness_table[key]) / (int(next_key) - int(key)))
                 break
 
         # Если тумблер "Яркий фон" включен, устанавливаем brightness_bright_background_offset
